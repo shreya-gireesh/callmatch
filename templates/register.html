@@ -3,11 +3,19 @@
 
 <head>
     {% load static %}
-<!--    <style>-->
-<!--        .bg-gradient-primary{-->
-<!--        background-color:#9e004f;linear-gradient(180deg, #9e004f 10%, #d3046b 100%);-->
-<!--        background-size:cover}-->
-<!--    </style>-->
+    <style>
+        .parent-container {
+            display: grid;
+            place-items: center; /* Centers both horizontally and vertically */
+        }
+
+        .d-flex.logo {
+            width: 10rem;   /* Adjust width as needed */
+            height: 3rem;  /* Adjust height as needed */
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -35,9 +43,12 @@
             <div class="card-body p-0">
                 <!-- Nested Row within Card Body -->
                 <div class="row">
-                    <div class="col-lg-5 d-none d-lg-block bg-register-image" style="background-image: url({% static 'img/register.jpg' %});"></div>
+                    <div class="col-lg-5 d-none d-lg-block bg-register-image" style="background-image: url({% static 'img/register.png' %});"></div>
                     <div class="col-lg-7">
                         <div class="p-5">
+                            <div class="parent-container">
+                                <div class="d-flex logo" style="background-image: url({% static 'img/callmatch-1.png' %});"></div>
+                            </div>
                             <div class="text-center">
                                 <h1 class="h4 text-gray-900 mb-4">Create an Account!</h1>
                             </div>

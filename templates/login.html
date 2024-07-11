@@ -3,6 +3,19 @@
 
 <head>
     {% load static %}
+    <style>
+        .parent-container {
+            display: grid;
+            place-items: center; /* Centers both horizontally and vertically */
+        }
+
+        .d-flex.logo {
+            width: 10rem;   /* Adjust width as needed */
+            height: 3rem;  /* Adjust height as needed */
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -22,7 +35,7 @@
 
 </head>
 
-<body class="bg-gradient-primary">
+<body>
 
     <div class="container">
 
@@ -35,9 +48,14 @@
                     <div class="card-body p-0">
                         <!-- Nested Row within Card Body -->
                         <div class="row">
-                            <div class="col-lg-6 d-none d-lg-block bg-login-image" style="background-image: url({% static 'img/login.jpg' %});"></div>
+                            <div class="col-lg-6 d-none d-lg-block bg-login-image" style="background-image: url({% static 'img/login.png' %});">
+
+                            </div>
                             <div class="col-lg-6">
                                 <div class="p-5">
+                                    <div class="parent-container">
+                                        <div class="d-flex logo" style="background-image: url({% static 'img/callmatch-1.png' %});"></div>
+                                    </div>
                                     <div class="text-center">
                                         <h1 class="h4 text-gray-900 mb-4">Welcome Back!</h1>
                                     </div>
