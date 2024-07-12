@@ -1,9 +1,10 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseNotAllowed
 from .utils import generate_agora_token
+from .forms import CustomerForm
 from .serializer import *
 from .models import *
 
@@ -18,7 +19,9 @@ def register(request):
 
 
 def home(request):
-    return render(request, 'index.html')
+    normal_users_count = CustomerModel.objects.filter(status = 'Normal User').count
+    agent_user_count = CustomerModel.objects.filter(status = 'Agent User').count
+    return render(request, 'index.html', {'normaluser': normal_users_count, 'agentuser': agent_user_count})
 
 
 def registered_users(request):
@@ -40,6 +43,30 @@ def registered_users(request):
             wallet.purchase_date = None
             wallet.save()
     return render(request, 'registered_users.html', {'users': users})
+
+
+def add_user(request):
+    if request.method == 'POST':
+        form = CustomerForm(request.POST)
+        if form.is_valid():
+            form.save()  # Saves the form data to the CustomerModel database table
+            return redirect('users')  # Redirect to a success page or another view after successful submission
+    else:
+        form = CustomerForm()
+    return render(request, 'add_user.html', {'form': form})
+
+
+def delete_user(request):
+    if request.method == 'POST':
+        user_id = request.POST.get('user_id')
+        if user_id:
+            try:
+                user = CustomerModel.objects.get(pk=user_id)
+                user.delete()
+                return redirect('users')  # Redirect to the users list page after deletion
+            except CustomerModel.DoesNotExist:
+                return redirect('users')  # Handle the case where the user does not exist
+    return HttpResponseNotAllowed(['POST'])
 
 
 def wallet_normaluser(request):
@@ -91,6 +118,17 @@ def customers(request):
     return Response(user_data.data, status=status.HTTP_200_OK)
 
 
+
+@api_view(['POST'])
+def register(request):
+    if request.method == 'POST':
+        serializer = CustomerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 @api_view(['GET'])
 def wallet(request, id):
     wallet = WalletModel.objects.get(user=id)
@@ -113,3 +151,17 @@ def coins(request):
     coins = CoinsModel.objects.all()
     coins_data = CoinsSerializer(coins, many=True)
     return Response(coins_data.data)
+
+
+@api_view(['GET'])
+def withdrawal(request, id):
+    agent = AgentPurchaseModel.objects.get(user = id)
+    if agent.total_amount >= 5000:
+        withdrawal_amount = agent.total_amount
+        agent.total_amount = agent.total_amount - withdrawal_amount
+        agent.withdrawal_amount = agent.withdrawal_amount + withdrawal_amount
+        agent.save()
+        return JsonResponse({'message': f'Withdrawn amount: {withdrawal_amount}'}, status=200)
+    else:
+        # Return error response if balance is insufficient
+        return JsonResponse({'error': 'Insufficient balance for withdrawal'}, status=400)

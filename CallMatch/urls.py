@@ -24,6 +24,8 @@ urlpatterns = [
     path('login', views.login, name='login'),
     path('register', views.register, name='register'),
     path('users', views.registered_users, name='users'),
+    path('add_user', views.add_user, name='add_user'),
+    path('delete_user', views.delete_user, name='delete_user'),
     path('wallet_normal_user', views.wallet_normaluser, name='wallet_normal_users'),
     path('wallet_agent_user', views.wallet_agentuser, name='wallet_agent_users'),
     path('history_agent_user', views.agent_history, name='history_agent_users'),
@@ -32,7 +34,9 @@ urlpatterns = [
 
     #api
     path('login_user/', views.customers, name='user_data'),
+    path('register', views.register, name='register'),
     path('wallet/<int:id>', views.wallet, name='wallet'),
     path('report/<int:id>', views.report, name='report'),
     path('coins', views.coins, name='coins'),
+    path('withdrawal/<int:id>', views.withdrawal, name='withdrawal'),
 ]
