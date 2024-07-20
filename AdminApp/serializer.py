@@ -55,10 +55,10 @@ class WithdrawalHistorySerializer(serializers.ModelSerializer):
         fields = ['agentpurchase_id', 'withdrawal_amount', 'withdrawal_date']
 
 
-class ReportSerializer(serializers.ModelSerializer):
-    wallet = WalletSerializer(read_only=True)
-    withdrawals = WithdrawalHistorySerializer(source='withdrawalhistorymodel_set', many=True, read_only=True)
-
-    class Meta:
-        model = CustomerModel
-        fields = ['wallet', 'customer_first_name', 'customer_last_name', 'withdrawal']
+# class ReportSerializer(serializers.ModelSerializer):
+#     wallet = WalletSerializer(read_only=True)
+#     withdrawals = WithdrawalHistorySerializer(source='withdrawalhistorymodel_set', many=True, read_only=True)
+#
+#     class Meta:
+#         model = CustomerModel, WalletModel, WithdrawalHistoryModel
+#         fields = ['wallet', 'customer_first_name', 'customer_last_name', 'withdrawals']

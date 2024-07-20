@@ -38,7 +38,6 @@ urlpatterns = [
     path('all_users/', views.all_users, name='all_users'),
     path('update_profile/<int:id>', views.update_profile, name='update_profile'),
     path('wallet/<int:id>', views.wallet, name='wallet'),
-    path('report/<int:id>', views.reports, name='report'),
     path('withdrawal/<int:id>', views.withdrawal, name='withdrawal'),
     path('start-call/', views.start_call, name='start-call'),
     path('end-call/', views.end_call, name='end-call'),

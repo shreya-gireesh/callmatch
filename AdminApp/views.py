@@ -418,7 +418,3 @@ def send_message(request):
     return Response({'message': 'Message sent successfully'}, status=status.HTTP_200_OK)
 
 
-def reports(request, id):
-    agent = CustomerModel.objects.get(customer_id = id)
-    agent_data = ReportSerializer(instance=agent)
-    return Response(agent_data.data)
