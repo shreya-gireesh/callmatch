@@ -4,5 +4,10 @@ from AdminApp.models import *
 # Register your models here.
 admin.site.register(CustomerModel)
 admin.site.register(WalletModel)
-admin.site.register(AgentPurchaseModel)
-admin.site.register(CoinsModel)
+admin.site.register(UserPurchaseModel)
+admin.site.register(CoinPackageModel)
+admin.site.register(AdminModel)
+admin.site.register(ChatPackageModel)
+admin.site.register(InboxModel)
+admin.site.register(InboxParticipantsModel)
+admin.site.register(MessageModel)

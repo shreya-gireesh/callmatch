@@ -2,6 +2,17 @@ from django.db import models
 
 
 # Create your models here.
+class AdminModel(models.Model):
+    admin_id = models.AutoField(primary_key = True)
+    admin_first_name = models.CharField(max_length=100)
+    admin_last_name = models.CharField(max_length=100, null=True)
+    admin_mail = models.EmailField()
+    admin_password = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.admin_first_name
+
+
 class CustomerModel(models.Model):
     NORMAL_USER = 'Normal User'
     AGENT_USER = 'Agent User'
@@ -9,16 +20,29 @@ class CustomerModel(models.Model):
         (NORMAL_USER, 'Normal User'),
         (AGENT_USER, 'Agent User'),
     ]
+    BOTH = 'Both'
+    MALAYALAM = 'Malayalam'
+    TAMIL = 'Tamil'
+    LANGUAGE_CHOICES = [
+        (BOTH, 'Both'),
+        (MALAYALAM, 'Malayalam'),
+        (TAMIL, 'Tamil'),
+    ]
     customer_id = models.AutoField(primary_key = True)
     customer_first_name = models.CharField(max_length=100)
     customer_last_name = models.CharField(max_length=100)
     customer_email = models.EmailField()
     customer_contact = models.CharField(max_length=50)
-    customer_password = models.CharField(max_length=100)
     status = models.CharField(
         max_length=20,
         choices=USER_STATUS_CHOICES,
         default=NORMAL_USER,
+    )
+    is_online = models.BooleanField(default=False)
+    languages = models.CharField(
+        max_length=20,
+        choices=LANGUAGE_CHOICES,
+        default=BOTH,
     )
 
     def __str__(self):
@@ -28,20 +52,72 @@ class CustomerModel(models.Model):
 class WalletModel(models.Model):
     wallet_id = models.AutoField(primary_key = True)
     user = models.ForeignKey(CustomerModel, on_delete=models.CASCADE)
-    wallet_coins = models.IntegerField(default=1000, null=True)
-    purchase_date= models.DateField(null=True, blank=True)
-    agent_balance = models.IntegerField(default=0, null=True)
-
-
-class AgentPurchaseModel(models.Model):
-    agentpurchase_id = models.AutoField(primary_key = True)
-    user = models.ForeignKey(CustomerModel, on_delete=models.CASCADE)
-    total_amount = models.IntegerField(default=0)
+    wallet_coins = models.IntegerField(default=300, null=True)
+    messages_remaining = models.IntegerField(default=0)  # For normal users
+    call_amount = models.FloatField(default=0.0)
+    chat_amount = models.FloatField(default=0.0)
+    total_messages_received = models.IntegerField(default=0)
     total_minutes = models.IntegerField(default=0)
-    withdrawal_amount = models.IntegerField(default=0)
 
 
-class CoinsModel(models.Model):
+class UserPurchaseModel(models.Model):
+    userpurchase_id = models.AutoField(primary_key = True)
+    user = models.ForeignKey(CustomerModel, on_delete=models.CASCADE)
+    purchase_date = models.DateTimeField()
+    purchase_amount = models.FloatField()
+
+
+class WithdrawalHistoryModel(models.Model):
+    agentpurchase_id = models.AutoField(primary_key = True)
+    agent = models.ForeignKey(CustomerModel, on_delete=models.CASCADE)
+    withdrawal_amount = models.FloatField()
+    withdrawal_date = models.DateTimeField()
+
+
+
+
+class CoinPackageModel(models.Model):
     coin_id = models.AutoField(primary_key = True)
-    coin_amount = models.IntegerField()
+    package_price = models.FloatField()
+    total_coins = models.IntegerField()
+
+
+
+class ChatPackageModel(models.Model):
+    chat_id = models.AutoField(primary_key = True)
+    package_price = models.FloatField()
+    message_count = models.IntegerField()
+
+
+# chat
+class InboxModel(models.Model):
+    inbox_id = models.AutoField(primary_key = True)
+    last_message = models.TextField()
+    last_sent_user = models.ForeignKey(CustomerModel, on_delete=models.CASCADE)
+
+
+class InboxParticipantsModel(models.Model):
+    message_id = models.AutoField(primary_key = True)
+    inbox = models.ForeignKey(InboxModel, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomerModel, on_delete=models.CASCADE)
+
+
+class MessageModel(models.Model):
+    message_id = models.AutoField(primary_key = True)
+    inbox = models.ForeignKey(InboxModel, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomerModel, on_delete=models.CASCADE)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+# call details
+class CallDetailsModel(models.Model):
+    call_id = models.AutoField(primary_key=True)
+    caller = models.ForeignKey(CustomerModel, related_name='caller', on_delete=models.CASCADE)
+    agent = models.ForeignKey(CustomerModel, related_name='agent', on_delete=models.CASCADE)
+    agora_channel_name = models.CharField(max_length=100)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField(null=True, blank=True)
+    duration = models.IntegerField(default=0)  # Duration in minutes
+
 
