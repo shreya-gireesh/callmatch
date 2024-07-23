@@ -442,6 +442,7 @@
                                               <th scope="col">Phone Number</th>
                                               <th scope="col">Status</th>
                                               <th scope="col">Action</th>
+                                              <th scope="col">Button</th>
 
                                             </tr>
                                           </thead>
@@ -473,6 +474,13 @@
                                                     <i class="fas fa-trash" onclick="document.getElementById('delete_form_{{ user.customer_id }}').submit();" style="cursor: pointer;"></i>
                                                 </form>
                                               </td>
+                                                <td>
+                                                    <form method="POST">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="user_id" value="{{ user.customer_id }}">
+                                                        <input type="submit" name="report" class="btn btn-primary" value="Report">
+                                                    </form>
+                                                </td>
                                             </tr>
                                           {% endfor %}
                                           </tbody>

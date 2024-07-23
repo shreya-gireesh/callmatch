@@ -1,9 +1,10 @@
 import requests
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse, HttpResponseNotAllowed
+from django.utils.dateparse import parse_date
 from CallMatch import settings
 from .utils import generate_agora_token
 from django.utils import timezone
@@ -17,6 +18,44 @@ MESSAGE_COST = 0.25  # Cost per message to agent
 
 
 # Create your views here.
+def report(request):
+    agents = CustomerModel.objects.filter(status ='Agent User' )
+    report_data = {}
+    if request.method == 'POST':
+        agent_id = request.POST.get('agent_id')
+        from_date = request.POST.get('from_date')
+        to_date = request.POST.get('to_date')
+
+        from_date = parse_date(from_date)
+        to_date = parse_date(to_date)
+
+        agent = get_object_or_404(CustomerModel, customer_id=agent_id)
+        wallet = WalletModel.objects.get(user__customer_id=agent_id)
+        withdrawals = WithdrawalHistoryModel.objects.filter(agent=agent, withdrawal_date__range=[from_date, to_date])
+        wallet_data = {
+            'call_amount': wallet.call_amount,
+            'chat_amount': wallet.chat_amount,
+            'total_messages_received': wallet.total_messages_received,
+            'total_minutes': wallet.total_minutes,
+            'total_amount': wallet.total_amount,
+        }
+        withdrawal_data = [
+            {
+                'withdrawal_amount': w.withdrawal_amount,
+                'withdrawal_date': w.withdrawal_date.strftime('%d %B %Y %I:%M %p')
+            }
+            for w in withdrawals
+        ]
+
+        report_data = {
+            'agent_name': f"{agent.customer_first_name} {agent.customer_last_name}",
+            'wallet': wallet_data,
+            'withdrawals': withdrawal_data,
+        }
+        return JsonResponse(report_data, status=200)
+    return render(request, 'agent_report.html', {'agents': agents})
+
+
 def login(request):
     if request.method == 'POST':
         email = request.POST.get('email')
@@ -72,6 +111,7 @@ def registered_users(request):
             user.status = new_status
             user.save()
             wallet = WalletModel.objects.get(user=userid)
+
             if new_status == 'Normal User':
                 wallet.wallet_coins = 1000
                 wallet.purchase_date = None
@@ -81,6 +121,7 @@ def registered_users(request):
                 wallet.wallet_coins = 0
                 wallet.purchase_date = None
                 wallet.save()
+
     return render(request, 'registered_users.html', {'users': users, 'username': username})
 
 
@@ -226,23 +267,20 @@ def wallet(request, id):
 
 
 @api_view(['GET'])
-def report(request, id):
-    agent = AgentPurchaseModel.objects.get(user=id)
-    agent_data = AgentPurchaseSerializer(agent).data
-    wallet = WalletModel.objects.get(user=id)
-    wallet_data = WalletSerializer(wallet).data
-    reports = {**agent_data, **wallet_data}
-    return Response(reports)
-
-
-@api_view(['GET'])
 def withdrawal(request, id):
-    agent = WalletModel.objects.get(user=id)
+    agent = WalletModel.objects.get(user__customer_id=id)
+
     if agent.total_amount >= 5000:
         withdrawal_amount = agent.total_amount
         agent.total_amount = agent.total_amount - withdrawal_amount
-        agent.withdrawal_amount = agent.withdrawal_amount + withdrawal_amount
+        print(agent.total_amount)
         agent.save()
+        WithdrawalHistoryModel.objects.create(
+            agent=CustomerModel.objects.get(customer_id= id),
+            withdrawal_amount=withdrawal_amount,
+            withdrawal_date=datetime.now()
+        )
+
         return JsonResponse({'message': f'Withdrawn amount: {withdrawal_amount}'}, status=200)
     else:
         # Return error response if balance is insufficient
@@ -298,8 +336,9 @@ def end_call(request):
         caller_wallet.save()
 
         # Add amount to agent's balance
-        agent_purchase.total_amount += duration * amount_per_minute
+        agent_purchase.call_amount += duration * amount_per_minute
         agent_purchase.total_minutes += duration
+        agent_purchase.total_amount = agent_purchase.call_amount + agent_purchase.chat_amount
         agent_purchase.save()
 
         return Response({"duration": duration})
@@ -399,8 +438,9 @@ def send_message(request):
 
     # Add amount to agent's account
     agent_wallet, created = WalletModel.objects.get_or_create(user=agent)
-    agent_wallet.call_amount += MESSAGE_COST
+    agent_wallet.chat_amount += MESSAGE_COST
     agent_wallet.total_messages_received += 1
+    agent_wallet.total_amount = agent_wallet.chat_amount + agent_wallet.call_amount
     agent_wallet.save()
 
     # Create the message

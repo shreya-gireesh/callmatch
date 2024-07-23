@@ -30,6 +30,7 @@ urlpatterns = [
     path('history_normal_user', views.user_history, name='history_normal_users'),
     path('wallet_agent_user', views.wallet_agentuser, name='wallet_agent_users'),
     path('history_agent_user', views.agent_history, name='history_agent_users'),
+    path('all_agents', views.report, name='agent_report'),
     path('coin_package', views.coin_package, name='coin_package'),
     path('agora/token/', views.get_agora_token, name='get_agora_token'),
 

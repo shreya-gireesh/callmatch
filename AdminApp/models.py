@@ -1,5 +1,6 @@
 from django.db import models
-
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 # Create your models here.
 class AdminModel(models.Model):
@@ -58,6 +59,7 @@ class WalletModel(models.Model):
     chat_amount = models.FloatField(default=0.0)
     total_messages_received = models.IntegerField(default=0)
     total_minutes = models.IntegerField(default=0)
+    total_amount = models.FloatField(default=0.0)
 
 
 class UserPurchaseModel(models.Model):
