@@ -47,4 +47,5 @@ urlpatterns = [
     path('chat_package/', views.list_chat_packages, name='chat_packages'),
     path('call_package/', views.list_call_packages, name='call_packages'),
     path('send_message/', views.send_message, name='send_message'),
+    path('get_chat/<int:user_id>/<int:agent_id>', views.get_chat, name='get_chat'),
 ]

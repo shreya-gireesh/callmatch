@@ -5,6 +5,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse, HttpResponseNotAllowed
 from django.utils.dateparse import parse_date
+from django.db.models import Q
 from CallMatch import settings
 from .utils import generate_agora_token
 from django.utils import timezone
@@ -341,9 +342,17 @@ def end_call(request):
         agent_purchase.total_amount = agent_purchase.call_amount + agent_purchase.chat_amount
         agent_purchase.save()
 
+        # Create transaction record
+        AgentTransactionModel.objects.create(
+            agent=agent_purchase,
+            transaction_amount=amount_per_minute,
+            transaction_date=datetime.now()
+        )
+
         return Response({"duration": duration})
     else:
         return Response({"error": "Failed to fetch call duration from Agora API"}, status=500)
+
 
 @api_view(['GET'])
 def list_chat_packages(request):
@@ -414,47 +423,89 @@ def buy_call_package(request):
 
 @api_view(['POST'])
 def send_message(request):
-    user_id = request.data.get('user_id')
-    agent_id = request.data.get('agent_id')
+    user_1 = request.data.get('user_1')
+    user_2 = request.data.get('user_2')
     message_text = request.data.get('message')
 
-    if not user_id or not agent_id or not message_text:
-        return Response({'error': 'user_id, agent_id, and message are required'}, status=status.HTTP_400_BAD_REQUEST)
+    if not user_1 or not user_2 or not message_text:
+        return Response({'error': 'Users, and message are required'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        user = CustomerModel.objects.get(customer_id=user_id, status=CustomerModel.NORMAL_USER)
-        agent = CustomerModel.objects.get(customer_id=agent_id, status=CustomerModel.AGENT_USER)
+        user1= CustomerModel.objects.get(customer_id=user_1)
+        print(user1)
+        user2 = CustomerModel.objects.get(customer_id=user_2)
+        print(user2)
     except CustomerModel.DoesNotExist:
         return Response({'error': 'User or agent not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    user_wallet = WalletModel.objects.get(user = user_id)
-    if user_wallet.messages_remaining <= 0:
-        return Response({'error': 'Not enough messages remaining'}, status=status.HTTP_400_BAD_REQUEST)
+    # Check if the sender is the user or the agent
+    sender = user1
+    recipient = user2
 
-    # Deduct message from user
-    user_wallet = WalletModel.objects.get(user = user)
-    user_wallet.messages_remaining -= 1
-    user_wallet.save()
+    if sender.status == 'Normal User':
+        user_wallet = WalletModel.objects.get(user=user1)
+        if user_wallet.messages_remaining <= 0:
+            return Response({'error': 'Not enough messages remaining'}, status=status.HTTP_400_BAD_REQUEST)
+        # Deduct message from user's wallet
+        user_wallet.messages_remaining -= 1
+        user_wallet.save()
 
-    # Add amount to agent's account
-    agent_wallet, created = WalletModel.objects.get_or_create(user=agent)
-    agent_wallet.chat_amount += MESSAGE_COST
-    agent_wallet.total_messages_received += 1
-    agent_wallet.total_amount = agent_wallet.chat_amount + agent_wallet.call_amount
-    agent_wallet.save()
+    # Add amount to agent's account if the sender is the user
+    if recipient.status == 'Agent User':
+        agent_wallet, created = WalletModel.objects.get_or_create(user=user2)
+        agent_wallet.chat_amount += MESSAGE_COST
+        agent_wallet.total_messages_received += 1
+        agent_wallet.total_amount = agent_wallet.chat_amount + agent_wallet.call_amount
+        agent_wallet.save()
 
-    # Create the message
+        # Create transaction record
+        AgentTransactionModel.objects.create(
+            agent=recipient,
+            transaction_amount=MESSAGE_COST,
+            transaction_date = datetime.now()
+        )
+
     inbox, created = InboxModel.objects.get_or_create(
-        last_sent_user=user,
+        last_sent_user=sender,
         defaults={'last_message': message_text}
     )
+    if not created:
+        inbox.last_message = message_text
+        inbox.save()
 
+    # Ensure both participants are in the inbox
+    InboxParticipantsModel.objects.get_or_create(inbox=inbox, user=user1)
+    InboxParticipantsModel.objects.get_or_create(inbox=inbox, user=user2)
+
+    # Create the message
     message = MessageModel.objects.create(
         inbox=inbox,
-        user=user,
-        message=message_text
+        user=sender,
+        message=message_text,
+        created_at = datetime.now()
     )
 
     return Response({'message': 'Message sent successfully'}, status=status.HTTP_200_OK)
 
 
+@api_view(['GET'])
+def get_chat(request, user_id, agent_id):
+    try:
+        user = CustomerModel.objects.get(customer_id=user_id)
+        agent = CustomerModel.objects.get(customer_id=agent_id)
+    except CustomerModel.DoesNotExist:
+        return Response({'error': 'User or agent not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if user.status != 'Normal User' or agent.status != 'Agent User':
+        return Response({'error': 'Invalid user or agent status'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Fetch all messages in the inbox where both user and agent are participants
+    messages = MessageModel.objects.filter(
+        inbox__in=InboxParticipantsModel.objects.filter(user=user).values_list('inbox', flat=True),
+        user__in=[user, agent]
+    ).order_by('created_at')
+
+    # Serialize the messages
+    serializer = MessageSerializer(messages, many=True)
+
+    return Response({'messages': serializer.data}, status=status.HTTP_200_OK)

@@ -27,12 +27,24 @@ class CoinsSerializer(serializers.ModelSerializer):
 
 
 class MessageSerializer(serializers.ModelSerializer):
-    user = CustomerSerializer(read_only=True)
+
+    sender = serializers.SerializerMethodField()
+    receiver = serializers.SerializerMethodField()
 
     class Meta:
         model = MessageModel
-        fields = ['message_id', 'user', 'message', 'created_at']
+        fields = ['message_id', 'sender', 'receiver','message', 'created_at']
 
+    def get_sender(self, obj):
+        return CustomerSerializer(obj.user).data
+
+    def get_receiver(self, obj):
+        # Assuming the receiver is the other participant in the conversation
+        inbox_participants = obj.inbox.inboxparticipantsmodel_set.all()
+        for participant in inbox_participants:
+            if participant.user != obj.user:
+                return CustomerSerializer(participant.user).data
+        return None
 
 class InboxSerializer(serializers.ModelSerializer):
     last_sent_user = CustomerSerializer(read_only=True)

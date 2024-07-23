@@ -109,7 +109,7 @@ class MessageModel(models.Model):
     inbox = models.ForeignKey(InboxModel, on_delete=models.CASCADE)
     user = models.ForeignKey(CustomerModel, on_delete=models.CASCADE)
     message = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField()
 
 
 # call details
@@ -123,3 +123,11 @@ class CallDetailsModel(models.Model):
     duration = models.IntegerField(default=0)  # Duration in minutes
 
 
+class AgentTransactionModel(models.Model):
+    agent_transaction_id = models.AutoField(primary_key = True)
+    agent = models.ForeignKey(CustomerModel, on_delete=models.CASCADE)
+    transaction_amount = models.FloatField()
+    transaction_date = models.DateTimeField()
+
+    def __str__(self):
+        return f"{self.agent.customer_first_name} {self.agent.customer_last_name}"
