@@ -21,6 +21,7 @@ from AdminApp import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
+    path('toggle_online_status/<int:customer_id>/', views.toggle_online_status, name='toggle_online_status'),
     path('login', views.login, name='login'),
     path('reg', views.reg, name='reg'),
     path('users', views.registered_users, name='users'),
@@ -36,6 +37,7 @@ urlpatterns = [
 
     #api
     path('login_user/', views.customers, name='user_data'),
+    path('register/', views.register, name='register'),
     path('all_users/', views.all_users, name='all_users'),
     path('update_profile/<int:id>', views.update_profile, name='update_profile'),
     path('wallet/<int:id>', views.wallet, name='wallet'),
@@ -47,5 +49,5 @@ urlpatterns = [
     path('chat_package/', views.list_chat_packages, name='chat_packages'),
     path('call_package/', views.list_call_packages, name='call_packages'),
     path('send_message/', views.send_message, name='send_message'),
-    path('get_chat/<int:user_id>/<int:agent_id>', views.get_chat, name='get_chat'),
+    path('get_chat/<int:user1>/<int:user2>', views.get_chat, name='get_chat'),
 ]

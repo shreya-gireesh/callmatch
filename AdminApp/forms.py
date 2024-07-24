@@ -7,20 +7,21 @@ class CustomerForm(forms.ModelForm):
         model = CustomerModel
         fields = ['customer_first_name', 'customer_last_name', 'customer_email', 'customer_contact']
 
-    labels = {
-        'customer_first_name': 'First Name',
-        'customer_last_name': 'Last Name',
-        'customer_email': 'Email',
-        'customer_contact': 'Phone Number',
-    }
+        labels = {
+            'customer_first_name': 'First Name',
+            'customer_last_name': 'Last Name',
+            'customer_email': 'Email',
+            'customer_contact': 'Phone Number',
+        }
 
-    widgets = {
-        'customer_first_name': forms.TextInput(attrs={'class': 'form-control'}),
-        'customer_last_name': forms.TextInput(attrs={'class': 'form-control'}),
-        'customer_email': forms.EmailInput(attrs={'class': 'form-control'}),
-        'customer_contact': forms.TextInput(attrs={'class': 'form-control'}),
+        widgets = {
+            'customer_first_name': forms.TextInput(attrs={'class': 'form-control form-control-user', 'placeholder': 'First Name'}),
+            'customer_last_name': forms.TextInput(attrs={'class': 'form-control form-control-user', 'placeholder': 'Last Name'}),
+            'customer_email': forms.EmailInput(attrs={'class': 'form-control form-control-user', 'placeholder': 'Email'}),
+            'customer_contact': forms.TextInput(attrs={'class': 'form-control form-control-user', 'placeholder': 'Phone Number'}),
 
-    }
+        }
+
 
 
 class AdminForm(forms.ModelForm):

@@ -5,6 +5,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse, HttpResponseNotAllowed
 from django.utils.dateparse import parse_date
+from django.views.decorators.http import require_POST
 from django.db.models import Q
 from CallMatch import settings
 from .utils import generate_agora_token
@@ -109,7 +110,20 @@ def home(request):
     else:
         normal_users_count = CustomerModel.objects.filter(status='Normal User').count
         agent_user_count = CustomerModel.objects.filter(status='Agent User').count
-    return render(request, 'index.html', {'normaluser': normal_users_count, 'agentuser': agent_user_count, 'username': username})
+        all_agents = CustomerModel.objects.filter(status = 'Agent User')
+    return render(request, 'index.html', {'normaluser': normal_users_count, 'agentuser': agent_user_count,
+                                          'all_agents': all_agents, 'username': username})
+
+
+@require_POST
+def toggle_online_status(request, customer_id):
+    try:
+        customer = CustomerModel.objects.get(pk=customer_id)
+        customer.is_online = False
+        customer.save()
+        return JsonResponse({'success': True})
+    except CustomerModel.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Customer not found'})
 
 
 def registered_users(request):
@@ -127,7 +141,7 @@ def registered_users(request):
             wallet = WalletModel.objects.get(user=userid)
 
             if new_status == 'Normal User':
-                wallet.wallet_coins = 1000
+                wallet.wallet_coins = 300
                 wallet.purchase_date = None
                 wallet.agent_balance = 0
                 wallet.save()
@@ -231,14 +245,10 @@ def customers(request):
     if not contact:
         return Response({'error': 'Phone Number required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    user, created = CustomerModel.objects.get_or_create(
-        customer_contact=contact,
-        defaults={
-            'customer_first_name': request.data.get('first_name', ''),
-            'customer_last_name': request.data.get('last_name', ''),
-            'customer_email': request.data.get('email', ''),
-        }
-    )
+    try:
+        user = CustomerModel.objects.get(customer_contact=contact)
+    except CustomerModel.DoesNotExist:
+        return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
 
     user.is_online = True
     user.save()
@@ -265,12 +275,26 @@ def update_profile(request, id):
 
 @api_view(['POST'])
 def register(request):
-    if request.method == 'POST':
-        serializer = CustomerSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    contact = request.data.get('mobile_no')
+    if not contact:
+        return Response({'error': 'Phone Number required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user, created = CustomerModel.objects.get_or_create(
+        customer_contact=contact,
+        defaults={
+            'customer_first_name': request.data.get('first_name', ''),
+            'customer_last_name': request.data.get('last_name', ''),
+            'customer_email': request.data.get('email', ''),
+        }
+    )
+
+    if created:
+        user.is_online = True
+        user.save()
+        user_data = CustomerSerializer(user)
+        return Response(user_data.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response({'error': 'Customer already exists'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
@@ -506,20 +530,20 @@ def send_message(request):
 
 
 @api_view(['GET'])
-def get_chat(request, user_id, agent_id):
+def get_chat(request, user1, user2):
     try:
-        user = CustomerModel.objects.get(customer_id=user_id)
-        agent = CustomerModel.objects.get(customer_id=agent_id)
+        user_1 = CustomerModel.objects.get(customer_id=user1)
+        user_2 = CustomerModel.objects.get(customer_id=user2)
     except CustomerModel.DoesNotExist:
         return Response({'error': 'User or agent not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if user.status != 'Normal User' or agent.status != 'Agent User':
-        return Response({'error': 'Invalid user or agent status'}, status=status.HTTP_400_BAD_REQUEST)
+    # if user.status != 'Normal User' or agent.status != 'Agent User':
+    #     return Response({'error': 'Invalid user or agent status'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Fetch all messages in the inbox where both user and agent are participants
     messages = MessageModel.objects.filter(
-        inbox__in=InboxParticipantsModel.objects.filter(user=user).values_list('inbox', flat=True),
-        user__in=[user, agent]
+        inbox__in=InboxParticipantsModel.objects.filter(user=user_1).values_list('inbox', flat=True),
+        user__in=[user_1, user_2]
     ).order_by('created_at')
 
     # Serialize the messages
