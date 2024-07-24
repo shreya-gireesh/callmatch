@@ -27,18 +27,22 @@ def report(request):
         from_date = request.POST.get('from_date')
         to_date = request.POST.get('to_date')
 
-        from_date = parse_date(from_date)
-        to_date = parse_date(to_date)
+        from_date = parse_date(from_date) if from_date else None
+        to_date = parse_date(to_date) if to_date else None
+
+        if not agent_id or not from_date or not to_date:
+            return JsonResponse({'error': 'Agent, from date, and to date are required'}, status=400)
 
         agent = get_object_or_404(CustomerModel, customer_id=agent_id)
         wallet = WalletModel.objects.get(user__customer_id=agent_id)
         withdrawals = WithdrawalHistoryModel.objects.filter(agent=agent, withdrawal_date__range=[from_date, to_date])
+        transactions = AgentTransactionModel.objects.filter(agent=agent, transaction_date__range=[from_date, to_date])
         wallet_data = {
-            'call_amount': wallet.call_amount,
-            'chat_amount': wallet.chat_amount,
-            'total_messages_received': wallet.total_messages_received,
-            'total_minutes': wallet.total_minutes,
-            'total_amount': wallet.total_amount,
+            'call_amount': wallet.call_amount if wallet else 0,
+            'chat_amount': wallet.chat_amount if wallet else 0,
+            'total_messages_received': wallet.total_messages_received if wallet else 0,
+            'total_minutes': wallet.total_minutes if wallet else 0,
+            'total_amount': wallet.total_amount if wallet else 0,
         }
         withdrawal_data = [
             {
@@ -47,10 +51,19 @@ def report(request):
             }
             for w in withdrawals
         ]
-
+        transactions_data = [
+            {
+                "receiver": f"{t.receiver.customer_first_name} {t.receiver.customer_last_name}",
+                "amount": t.transaction_amount,
+                "date":  t.transaction_date.strftime('%d %B %Y %I:%M %p'),
+                "type":t.transaction_type
+            }
+            for t in transactions
+        ]
         report_data = {
             'agent_name': f"{agent.customer_first_name} {agent.customer_last_name}",
             'wallet': wallet_data,
+            'transactions': transactions_data,
             'withdrawals': withdrawal_data,
         }
         return JsonResponse(report_data, status=200)
@@ -339,14 +352,16 @@ def end_call(request):
         # Add amount to agent's balance
         agent_purchase.call_amount += duration * amount_per_minute
         agent_purchase.total_minutes += duration
-        agent_purchase.total_amount = agent_purchase.call_amount + agent_purchase.chat_amount
+        agent_purchase.total_amount = agent_purchase.total_amount + (duration * amount_per_minute)
         agent_purchase.save()
 
         # Create transaction record
         AgentTransactionModel.objects.create(
             agent=agent_purchase,
+            receiver= call.caller,
             transaction_amount=amount_per_minute,
-            transaction_date=datetime.now()
+            transaction_date=datetime.now(),
+            transaction_type='Call'
         )
 
         return Response({"duration": duration})
@@ -455,14 +470,16 @@ def send_message(request):
         agent_wallet, created = WalletModel.objects.get_or_create(user=user2)
         agent_wallet.chat_amount += MESSAGE_COST
         agent_wallet.total_messages_received += 1
-        agent_wallet.total_amount = agent_wallet.chat_amount + agent_wallet.call_amount
+        agent_wallet.total_amount = agent_wallet.total_amount + MESSAGE_COST
         agent_wallet.save()
 
         # Create transaction record
         AgentTransactionModel.objects.create(
             agent=recipient,
+            receiver=sender,
             transaction_amount=MESSAGE_COST,
-            transaction_date = datetime.now()
+            transaction_date = datetime.now(),
+            transaction_type='Chat'
         )
 
     inbox, created = InboxModel.objects.get_or_create(

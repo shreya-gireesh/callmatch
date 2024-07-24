@@ -124,10 +124,18 @@ class CallDetailsModel(models.Model):
 
 
 class AgentTransactionModel(models.Model):
+    CHAT = 'Chat'
+    CALL = 'Call'
+    TRANSACTION_TYPE_CHOICES = [
+        (CHAT, 'Chat'),
+        (CALL, 'Call'),
+    ]
     agent_transaction_id = models.AutoField(primary_key = True)
     agent = models.ForeignKey(CustomerModel, on_delete=models.CASCADE)
+    receiver = models.ForeignKey(CustomerModel, on_delete=models.CASCADE, related_name='received_transactions', null=True)
     transaction_amount = models.FloatField()
     transaction_date = models.DateTimeField()
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPE_CHOICES, null=True)
 
     def __str__(self):
         return f"{self.agent.customer_first_name} {self.agent.customer_last_name}"
