@@ -291,6 +291,11 @@ def register(request):
     if created:
         user.is_online = True
         user.save()
+
+        # Create a wallet for the new user
+        wallet = WalletModel(user=user)
+        wallet.save()
+
         user_data = CustomerSerializer(user)
         return Response(user_data.data, status=status.HTTP_201_CREATED)
     else:
