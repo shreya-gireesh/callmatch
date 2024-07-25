@@ -161,7 +161,11 @@ def add_user(request):
         if request.method == 'POST':
             form = CustomerForm(request.POST)
             if form.is_valid():
-                form.save()  # Saves the form data to the CustomerModel database table
+                customer = form.save()  # Saves the form data to the CustomerModel database table
+
+                wallet = WalletModel(user = customer)
+                wallet.save()
+
                 return redirect('users')  # Redirect to a success page or another view after successful submission
         else:
             form = CustomerForm()
@@ -245,13 +249,32 @@ def customers(request):
     if not contact:
         return Response({'error': 'Phone Number required'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Check if the user already exists
     try:
         user = CustomerModel.objects.get(customer_contact=contact)
-    except CustomerModel.DoesNotExist:
-        return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
+        # Update existing user's is_existing and is_online to True
+        user.is_existing = True
+        user.is_online = True
+        user.save()
+        user_data = CustomerSerializer(user)
+        return Response(user_data.data, status=status.HTTP_200_OK)
 
-    user.is_online = True
-    user.save()
+    except CustomerModel.DoesNotExist:
+        # If user does not exist, create a new user
+        user = CustomerModel.objects.create(
+            customer_first_name=request.data.get('first_name', ''),
+            customer_last_name=request.data.get('last_name', ''),
+            customer_email=request.data.get('email', ''),
+            customer_contact=contact,
+            is_existing=False,
+            is_online=True
+        )
+        user.save()
+
+        # Create a wallet for the new user
+        wallet = WalletModel(user=user)
+        wallet.save()
+
     user_data = CustomerSerializer(user)
     return Response(user_data.data, status=status.HTTP_200_OK)
 

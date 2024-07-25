@@ -45,6 +45,8 @@ class CustomerModel(models.Model):
         choices=LANGUAGE_CHOICES,
         default=BOTH,
     )
+    is_existing = models.BooleanField(default=False)
+    adhaar_no = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self):
         return f"{self.customer_first_name} {self.customer_last_name}"
