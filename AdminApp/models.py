@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 
 # Create your models here.
 class AdminModel(models.Model):
@@ -141,3 +143,19 @@ class AgentTransactionModel(models.Model):
 
     def __str__(self):
         return f"{self.agent.customer_first_name} {self.agent.customer_last_name}"
+
+
+class PaymentModel(models.Model):
+    payment_id = models.AutoField(primary_key = True)
+    user = models.ForeignKey(CustomerModel, on_delete=models.CASCADE)
+    package_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    package_object_id = models.PositiveIntegerField()
+    package = GenericForeignKey('package_content_type', 'package_object_id')
+    amount = models.CharField(max_length=100)
+    razorpay_id = models.CharField(max_length=100, blank=True)
+    razorpay_payment_signature = models.CharField(max_length=100, blank=True)
+    paid = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    def __str__(self):
+        return f"{self.user.customer_first_name} {self.user.customer_last_name}"

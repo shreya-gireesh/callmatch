@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from django.http import JsonResponse, HttpResponseNotAllowed
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from CallMatch import settings
 from .utils import generate_agora_token
@@ -280,8 +281,15 @@ def customers(request):
 
 
 @api_view(['GET'])
-def all_users(request):
+def all_agents(request):
     users = CustomerModel.objects.filter(status = CustomerModel.AGENT_USER)
+    user_data = CustomerSerializer(users, many=True)
+    return Response(user_data.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def all_users(request):
+    users = CustomerModel.objects.filter(status = CustomerModel.NORMAL_USER)
     user_data = CustomerSerializer(users, many=True)
     return Response(user_data.data, status=status.HTTP_200_OK)
 
@@ -440,12 +448,24 @@ def list_call_packages(request):
 def buy_chat_package(request):
     user_id = request.data.get('user_id')
     package_id = request.data.get('package_id')
+    razorpay_payment_id = request.data.get('razorpay_payment_id')
 
     try:
-        user = CustomerModel.objects.get(pk=user_id, status=CustomerModel.NORMAL_USER)
-        package = ChatPackageModel.objects.get(pk=package_id)
+        user = CustomerModel.objects.get(customer_id=user_id, status=CustomerModel.NORMAL_USER)
+        package = ChatPackageModel.objects.get(chat_id=package_id)
     except (CustomerModel.DoesNotExist, ChatPackageModel.DoesNotExist):
         return Response({'error': 'User or package not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Create payment entry
+    package_type = ContentType.objects.get_for_model(package)
+    payment = PaymentModel.objects.create(
+        user=user,
+        package_content_type=package_type,
+        package_object_id=package.pk,
+        amount=package.package_price,
+        razorpay_id=razorpay_payment_id,
+        paid=True
+    )
 
     # Add messages to user
     wallet = WalletModel.objects.get(user=user_id)
@@ -466,12 +486,25 @@ def buy_chat_package(request):
 def buy_call_package(request):
     user_id = request.data.get('user_id')
     package_id = request.data.get('package_id')
+    razorpay_payment_id = request.data.get('razorpay_payment_id')
+    amount = request.data.get('amount')
 
     try:
         user = CustomerModel.objects.get(pk=user_id, status=CustomerModel.NORMAL_USER)
         package = CoinPackageModel.objects.get(pk=package_id)
     except (CustomerModel.DoesNotExist, CoinPackageModel.DoesNotExist):
         return Response({'error': 'User or package not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Create payment entry
+    package_type = ContentType.objects.get_for_model(package)
+    payment = PaymentModel.objects.create(
+        user=user,
+        package_content_type=package_type,
+        package_object_id=package.pk,
+        amount=amount,
+        razorpay_id=razorpay_payment_id,
+        paid=True
+    )
 
     # Add messages to user
     wallet = WalletModel.objects.get(user=user_id)
